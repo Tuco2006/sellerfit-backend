@@ -7,6 +7,15 @@ const vocabularioTracos = Array.from(
   new Set(atendentes.flatMap((a) => a.tracos))
 ).sort();
 
+const idsAtendentesValidos = new Set(atendentes.map((a) => a.id));
+
+const catalogoAtendentes = atendentes
+  .map(
+    (a) =>
+      `- id:${a.id} | nome:${a.nome} | cargo:${a.cargo} | tracos:${a.tracos.join(", ")} | segmentos:${a.segmentos.join(", ")} | foco:${a.foco.join(", ")} | nota:${a.notaMedia} | bio:${a.bio}`
+  )
+  .join("\n");
+
 const client = env.openaiApiKey ? new OpenAI({ apiKey: env.openaiApiKey }) : null;
 
 function montarPrompt(entrada: EntradaAnalise): string {
@@ -20,7 +29,9 @@ Analise a transcricao abaixo e devolva SOMENTE um JSON valido, sem nenhum texto 
   "resumoPerfil": "resumo curto (2-3 frases) do perfil e prioridades do cliente",
   "tracosRecomendados": ["traco1", "traco2", ...],
   "segmentoDetectado": "segmento de mercado do cliente, uma palavra",
-  "sentimentoGeral": "positivo" | "neutro" | "negativo" | "frustrado" | "animado"
+  "sentimentoGeral": "positivo" | "neutro" | "negativo" | "frustrado" | "animado",
+  "atendenteRecomendadoId": "id de UM atendente da lista abaixo",
+  "justificativaAtendente": "2-3 frases explicando a escolha"
 }
 
 Regras importantes:
@@ -29,6 +40,12 @@ Regras importantes:
 - "tracosRecomendados" deve conter de 2 a 4 palavras escolhidas OBRIGATORIAMENTE dessa lista de tracos comportamentais (escreva exatamente como esta na lista): ${vocabularioTracos.join(", ")}.
   Escolha os tracos do atendente ideal para lidar com esse cliente especifico, considerando o jeito dele falar e o tipo de dor.
 - "segmentoDetectado" deve ser baseado no segmento informado (${entrada.segmento || "nao informado"}) e/ou no que aparecer na transcricao.
+- "atendenteRecomendadoId" e "justificativaAtendente": esse e o ponto mais importante da analise. Leia com atencao o catalogo de atendentes abaixo (nome, cargo, tracos, segmentos, foco, nota e bio de cada um) e escolha, com raciocinio de verdade, qual atendente especifico tem o melhor encaixe pra esse cliente e essa conversa - nao escolha so pelo segmento, considere o jeito de falar do cliente, a dor especifica dele e o estilo/especialidade de cada atendente descrito na bio.
+  Na justificativa, cite elementos concretos: algo que o cliente disse ou precisa, cruzado com algo especifico do perfil ou da bio do atendente escolhido (nao repita so os tracos, mostre que voce entendeu o motivo real do encaixe).
+  O "atendenteRecomendadoId" TEM que ser exatamente um dos ids listados abaixo, sem inventar id novo.
+
+Catalogo de atendentes disponiveis:
+${catalogoAtendentes}
 
 Dados da reuniao:
 Cliente: ${entrada.clienteNome || "nao informado"}
@@ -60,7 +77,7 @@ async function analisarComOpenAI(entrada: EntradaAnalise): Promise<AnaliseTexto>
       {
         role: "system",
         content:
-          "Voce e um analista de CRM especialista em identificar dores de clientes em reunioes comerciais. Responda sempre em portugues do Brasil e sempre em JSON valido.",
+          "Voce e um analista de CRM senior, especialista em identificar dores de clientes em reunioes comerciais e em recomendar, com raciocinio real (nao mecanico), qual atendente do time deve continuar cada atendimento. Responda sempre em portugues do Brasil e sempre em JSON valido.",
       },
       { role: "user", content: montarPrompt(entrada) },
     ],
@@ -71,6 +88,11 @@ async function analisarComOpenAI(entrada: EntradaAnalise): Promise<AnaliseTexto>
 
   const json = JSON.parse(conteudo);
 
+  const atendenteRecomendadoId =
+    typeof json.atendenteRecomendadoId === "string" && idsAtendentesValidos.has(json.atendenteRecomendadoId)
+      ? json.atendenteRecomendadoId
+      : undefined;
+
   return {
     dores: Array.isArray(json.dores) && json.dores.length > 0 ? json.dores : ["nenhuma dor identificada"],
     urgencia: normalizarUrgencia(json.urgencia),
@@ -79,6 +101,8 @@ async function analisarComOpenAI(entrada: EntradaAnalise): Promise<AnaliseTexto>
     segmentoDetectado: json.segmentoDetectado || entrada.segmento || "geral",
     sentimentoGeral: json.sentimentoGeral || "neutro",
     origemAnalise: "openai",
+    atendenteRecomendadoId,
+    justificativaAtendente: atendenteRecomendadoId ? json.justificativaAtendente || undefined : undefined,
   };
 }
 

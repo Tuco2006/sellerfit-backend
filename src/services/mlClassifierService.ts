@@ -97,7 +97,7 @@ function vetorizarTfidf(tokens: string[], m: ModeloExportado): number[] {
 
 // pega as palavras do proprio texto que mais pesaram pra classe prevista,
 // usando os coeficientes reais do modelo (nao e um texto generico fixo)
-function termosInfluentes(vetor: number[], m: ModeloExportado, indiceClasse: number, limite = 3): string[] {
+function termosInfluentes(vetor: number[], m: ModeloExportado, indiceClasse: number, limite = 5): string[] {
   const linhaCoef = m.coef[indiceClasse];
   const contribuicoes: { termo: string; peso: number }[] = [];
 
@@ -114,22 +114,54 @@ function termosInfluentes(vetor: number[], m: ModeloExportado, indiceClasse: num
   return contribuicoes.slice(0, limite).map((c) => c.termo);
 }
 
-function montarExplicacao(sinal: SinalNegocio, termos: string[]): string {
-  const listaTermos = termos.length > 0 ? `"${termos.join('", "')}"` : "";
+interface ExplicacaoClassificacao {
+  motivo: string;
+  janelasDeOportunidade: string[];
+}
+
+function montarExplicacao(sinal: SinalNegocio, termos: string[], confianca: number): ExplicacaoClassificacao {
+  const confiancaPct = Math.round(confianca * 100);
 
   if (sinal === "ALERTA_CHURN") {
-    return termos.length > 0
-      ? `O modelo associou esse texto a risco de cancelamento por causa de termos como ${listaTermos}. Aproveite pra priorizar esse cliente no time de Retencao antes que o problema evolua pra uma perda de contrato.`
-      : `O modelo identificou um padrao de linguagem tipico de clientes insatisfeitos. Aproveite pra priorizar esse cliente no time de Retencao antes que o problema evolua.`;
+    const motivo =
+      termos.length > 0
+        ? `O modelo classificou essa conversa como risco de Churn com ${confiancaPct}% de confianca. As palavras "${termos.join('", "')}" foram as que mais pesaram nessa decisao, dentro do vocabulario que o modelo aprendeu nas reunioes reais do desafio.`
+        : `O modelo classificou essa conversa como risco de Churn com ${confiancaPct}% de confianca, mas nao achou uma palavra isolada dominante — o sinal veio da combinacao de varios termos mais fracos do texto.`;
+
+    return {
+      motivo,
+      janelasDeOportunidade: [
+        "Contato imediato do time de Retencao, antes que o cliente formalize o cancelamento.",
+        "Oferecer uma revisao de contrato, desconto ou plano alternativo pra reverter a insatisfacao.",
+        "Levantar o historico de chamados desse cliente pra atacar a causa raiz do problema, nao so o sintoma.",
+      ],
+    };
   }
 
   if (sinal === "OPORTUNIDADE_UPSELL") {
-    return termos.length > 0
-      ? `O modelo identificou sinais de interesse comercial por causa de termos como ${listaTermos}. Aproveite pra levar uma proposta de expansao ao time de Cross-sell enquanto o interesse esta quente.`
-      : `O modelo identificou um padrao de linguagem tipico de clientes buscando expandir ou investir mais. Aproveite pra levar uma proposta de expansao ao time de Cross-sell.`;
+    const motivo =
+      termos.length > 0
+        ? `O modelo classificou essa conversa como Oportunidade de Upsell com ${confiancaPct}% de confianca. As palavras "${termos.join('", "')}" foram as que mais pesaram nessa decisao, dentro do vocabulario que o modelo aprendeu nas reunioes reais do desafio.`
+        : `O modelo classificou essa conversa como Oportunidade de Upsell com ${confiancaPct}% de confianca, mas nao achou uma palavra isolada dominante — o sinal veio da combinacao de varios termos mais fracos do texto.`;
+
+    return {
+      motivo,
+      janelasDeOportunidade: [
+        "Levar uma proposta de upgrade ou modulo adicional enquanto o interesse do cliente esta quente.",
+        "Agendar uma demonstracao focada exatamente no que o cliente mencionou querer expandir.",
+        "Encaminhar pro time de Cross-sell com prioridade, antes que o interesse esfrie.",
+      ],
+    };
   }
 
-  return "O modelo nao encontrou termos fortes o suficiente puxando pra Churn ou Upsell nesse texto. Aproveite o momento neutro pra fortalecer o relacionamento e sondar novas necessidades do cliente.";
+  return {
+    motivo: `O modelo nao encontrou um padrao forte o suficiente de risco ou de interesse comercial nesse texto (confianca de ${confiancaPct}% pra Neutro). Isso nao significa que nao ha nada acontecendo — so que o vocabulario da conversa nao bateu com os padroes de Churn/Upsell aprendidos no treinamento.`,
+    janelasDeOportunidade: [
+      "Aproveitar a conversa neutra pra fortalecer o relacionamento e mapear necessidades futuras.",
+      "Investigar ativamente se ha dores que o cliente nao verbalizou diretamente (a IA generativa ajuda nisso).",
+      "Agendar um follow-up de rotina pra manter o relacionamento aquecido.",
+    ],
+  };
 }
 
 function preverComRegressaoLogistica(vetor: number[], m: ModeloExportado): ClassificacaoML {
@@ -158,13 +190,17 @@ function preverComRegressaoLogistica(vetor: number[], m: ModeloExportado): Class
   });
 
   const sinalPrevisto = m.classes[melhorIndice];
+  const confianca = Number(probs[melhorIndice].toFixed(4));
   const termos = sinalPrevisto === "NEUTRO" ? [] : termosInfluentes(vetor, m, melhorIndice);
+  const { motivo, janelasDeOportunidade } = montarExplicacao(sinalPrevisto, termos, confianca);
 
   return {
     sinal: sinalPrevisto,
-    confianca: Number(probs[melhorIndice].toFixed(4)),
+    confianca,
     probabilidades,
-    explicacao: montarExplicacao(sinalPrevisto, termos),
+    termosChave: termos,
+    motivo,
+    janelasDeOportunidade,
   };
 }
 

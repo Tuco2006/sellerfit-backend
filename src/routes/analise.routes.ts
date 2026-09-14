@@ -4,7 +4,8 @@ import { analisarTranscricao } from "../services/aiService";
 import { calcularMatches } from "../services/matchService";
 import { calcularSinalNegocio } from "../services/sinalNegocioService";
 import { classificarComML } from "../services/mlClassifierService";
-import { AnaliseTranscricao } from "../types";
+import { atendentes } from "../data/atendentes";
+import { AnaliseTranscricao, RecomendacaoIA } from "../types";
 
 export const analiseRouter = Router();
 
@@ -39,7 +40,19 @@ analiseRouter.post("/", async (req, res) => {
     // pra essa segunda forma de analise ter sua propria recomendacao de atendente
     const matchesML = calcularMatches({ ...analise, sinalNegocio: classificacaoML.sinal });
 
-    res.json({ analise, matches, classificacaoML, matchesML });
+    // quando a OpenAI analisou de verdade o catalogo de atendentes e escolheu um, monta a recomendacao
+    let recomendacaoIA: RecomendacaoIA | undefined;
+    if (analiseTexto.atendenteRecomendadoId) {
+      const atendenteEscolhido = atendentes.find((a) => a.id === analiseTexto.atendenteRecomendadoId);
+      if (atendenteEscolhido) {
+        recomendacaoIA = {
+          atendente: atendenteEscolhido,
+          justificativa: analiseTexto.justificativaAtendente || "A IA recomendou esse atendente com base no perfil do cliente.",
+        };
+      }
+    }
+
+    res.json({ analise, matches, classificacaoML, matchesML, recomendacaoIA });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: "falha ao processar a analise" });
