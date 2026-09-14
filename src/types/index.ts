@@ -43,9 +43,16 @@ export interface MatchAtendente {
   motivo: string;
 }
 
+export interface ClassificacaoML {
+  sinal: SinalNegocio;
+  confianca: number;
+  probabilidades: Record<SinalNegocio, number>;
+}
+
 export interface ResultadoAnalise {
   analise: AnaliseTranscricao;
   matches: MatchAtendente[];
+  classificacaoML: ClassificacaoML;
 }
 
 export interface EntradaAnalise {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { analisarTranscricao } from "../services/aiService";
 import { calcularMatches } from "../services/matchService";
 import { calcularSinalNegocio } from "../services/sinalNegocioService";
+import { classificarComML } from "../services/mlClassifierService";
 import { AnaliseTranscricao } from "../types";
 
 export const analiseRouter = Router();
@@ -32,8 +33,9 @@ analiseRouter.post("/", async (req, res) => {
 
     const analise: AnaliseTranscricao = { ...analiseTexto, ...sinal };
     const matches = calcularMatches(analise);
+    const classificacaoML = classificarComML(entrada.transcricao);
 
-    res.json({ analise, matches });
+    res.json({ analise, matches, classificacaoML });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: "falha ao processar a analise" });
