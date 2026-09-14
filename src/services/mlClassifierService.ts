@@ -37,6 +37,7 @@ interface ModeloExportado {
 }
 
 let modelo: ModeloExportado | null = null;
+let vocabularioInverso: string[] | null = null;
 
 function carregarModelo(): ModeloExportado {
   if (modelo) return modelo;
@@ -44,6 +45,12 @@ function carregarModelo(): ModeloExportado {
   const caminho = path.join(__dirname, "..", "data", "modeloClassificador.json");
   const conteudo = fs.readFileSync(caminho, "utf-8");
   modelo = JSON.parse(conteudo);
+
+  vocabularioInverso = new Array(modelo!.maxFeatures);
+  for (const [termo, indice] of Object.entries(modelo!.vocabulario)) {
+    vocabularioInverso[indice] = termo;
+  }
+
   return modelo as ModeloExportado;
 }
 
@@ -88,6 +95,43 @@ function vetorizarTfidf(tokens: string[], m: ModeloExportado): number[] {
   return vetor;
 }
 
+// pega as palavras do proprio texto que mais pesaram pra classe prevista,
+// usando os coeficientes reais do modelo (nao e um texto generico fixo)
+function termosInfluentes(vetor: number[], m: ModeloExportado, indiceClasse: number, limite = 3): string[] {
+  const linhaCoef = m.coef[indiceClasse];
+  const contribuicoes: { termo: string; peso: number }[] = [];
+
+  for (let i = 0; i < vetor.length; i++) {
+    if (vetor[i] > 0) {
+      const peso = vetor[i] * linhaCoef[i];
+      if (peso > 0) {
+        contribuicoes.push({ termo: vocabularioInverso![i], peso });
+      }
+    }
+  }
+
+  contribuicoes.sort((a, b) => b.peso - a.peso);
+  return contribuicoes.slice(0, limite).map((c) => c.termo);
+}
+
+function montarExplicacao(sinal: SinalNegocio, termos: string[]): string {
+  const listaTermos = termos.length > 0 ? `"${termos.join('", "')}"` : "";
+
+  if (sinal === "ALERTA_CHURN") {
+    return termos.length > 0
+      ? `O modelo associou esse texto a risco de cancelamento por causa de termos como ${listaTermos}. Aproveite pra priorizar esse cliente no time de Retencao antes que o problema evolua pra uma perda de contrato.`
+      : `O modelo identificou um padrao de linguagem tipico de clientes insatisfeitos. Aproveite pra priorizar esse cliente no time de Retencao antes que o problema evolua.`;
+  }
+
+  if (sinal === "OPORTUNIDADE_UPSELL") {
+    return termos.length > 0
+      ? `O modelo identificou sinais de interesse comercial por causa de termos como ${listaTermos}. Aproveite pra levar uma proposta de expansao ao time de Cross-sell enquanto o interesse esta quente.`
+      : `O modelo identificou um padrao de linguagem tipico de clientes buscando expandir ou investir mais. Aproveite pra levar uma proposta de expansao ao time de Cross-sell.`;
+  }
+
+  return "O modelo nao encontrou termos fortes o suficiente puxando pra Churn ou Upsell nesse texto. Aproveite o momento neutro pra fortalecer o relacionamento e sondar novas necessidades do cliente.";
+}
+
 function preverComRegressaoLogistica(vetor: number[], m: ModeloExportado): ClassificacaoML {
   const scores = m.classes.map((_, c) => {
     let s = m.intercept[c];
@@ -113,10 +157,14 @@ function preverComRegressaoLogistica(vetor: number[], m: ModeloExportado): Class
     probabilidades[classe] = Number(probs[i].toFixed(4));
   });
 
+  const sinalPrevisto = m.classes[melhorIndice];
+  const termos = sinalPrevisto === "NEUTRO" ? [] : termosInfluentes(vetor, m, melhorIndice);
+
   return {
-    sinal: m.classes[melhorIndice],
+    sinal: sinalPrevisto,
     confianca: Number(probs[melhorIndice].toFixed(4)),
     probabilidades,
+    explicacao: montarExplicacao(sinalPrevisto, termos),
   };
 }
 
