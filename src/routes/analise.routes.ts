@@ -33,9 +33,13 @@ analiseRouter.post("/", async (req, res) => {
 
     const analise: AnaliseTranscricao = { ...analiseTexto, ...sinal };
     const matches = calcularMatches(analise);
-    const classificacaoML = classificarComML(entrada.transcricao);
 
-    res.json({ analise, matches, classificacaoML });
+    const classificacaoML = classificarComML(entrada.transcricao);
+    // recalcula o match usando o sinal previsto pelo modelo de ML no lugar da regra de negocio,
+    // pra essa segunda forma de analise ter sua propria recomendacao de atendente
+    const matchesML = calcularMatches({ ...analise, sinalNegocio: classificacaoML.sinal });
+
+    res.json({ analise, matches, classificacaoML, matchesML });
   } catch (erro) {
     console.error(erro);
     res.status(500).json({ erro: "falha ao processar a analise" });

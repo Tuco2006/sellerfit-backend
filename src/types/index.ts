@@ -53,6 +53,7 @@ export interface ResultadoAnalise {
   analise: AnaliseTranscricao;
   matches: MatchAtendente[];
   classificacaoML: ClassificacaoML;
+  matchesML: MatchAtendente[];
 }
 
 export interface EntradaAnalise {
