@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { env } from "../config/env";
 import { atendentes } from "../data/atendentes";
-import { AnaliseTranscricao, EntradaAnalise, Urgencia } from "../types";
+import { AnaliseTexto, EntradaAnalise, Urgencia } from "../types";
 
 const vocabularioTracos = Array.from(
   new Set(atendentes.flatMap((a) => a.tracos))
@@ -47,7 +47,7 @@ function normalizarUrgencia(valor: unknown): Urgencia {
   return "MEDIA";
 }
 
-async function analisarComOpenAI(entrada: EntradaAnalise): Promise<AnaliseTranscricao> {
+async function analisarComOpenAI(entrada: EntradaAnalise): Promise<AnaliseTexto> {
   if (!client) {
     throw new Error("OPENAI_API_KEY nao configurada");
   }
@@ -99,7 +99,7 @@ const PALAVRAS_DOR: Record<string, string> = {
   retrabalho: "retrabalho por falha de processo",
 };
 
-function analisarLocal(entrada: EntradaAnalise): AnaliseTranscricao {
+function analisarLocal(entrada: EntradaAnalise): AnaliseTexto {
   const texto = entrada.transcricao.toLowerCase();
 
   const doresEncontradas = Object.entries(PALAVRAS_DOR)
@@ -115,6 +115,10 @@ function analisarLocal(entrada: EntradaAnalise): AnaliseTranscricao {
   if (texto.includes("confuso") || texto.includes("entender")) tracosRecomendados.push("didatico");
   if (texto.includes("caro") || texto.includes("orcamento")) tracosRecomendados.push("negociadora");
   if (texto.includes("tecnico") || texto.includes("sistema") || texto.includes("integra")) tracosRecomendados.push("tecnico");
+  if (texto.includes("expandir") || texto.includes("investir") || texto.includes("contratar") || texto.includes("crescer"))
+    tracosRecomendados.push("estrategico", "negociadora");
+  if (texto.includes("automatizar") || texto.includes("modernizar") || texto.includes("upgrade"))
+    tracosRecomendados.push("estrategico");
   if (tracosRecomendados.length === 0) tracosRecomendados.push("comunicativa", "resolutivo");
 
   return {
@@ -130,7 +134,7 @@ function analisarLocal(entrada: EntradaAnalise): AnaliseTranscricao {
   };
 }
 
-export async function analisarTranscricao(entrada: EntradaAnalise): Promise<AnaliseTranscricao> {
+export async function analisarTranscricao(entrada: EntradaAnalise): Promise<AnaliseTexto> {
   if (!client) {
     return analisarLocal(entrada);
   }

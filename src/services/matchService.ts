@@ -1,5 +1,5 @@
 import { atendentes } from "../data/atendentes";
-import { AnaliseTranscricao, Atendente, MatchAtendente } from "../types";
+import { AnaliseTranscricao, Atendente, Foco, MatchAtendente } from "../types";
 
 // normaliza pra ignorar diferenca de genero tipo "direto" / "direta"
 function normalizar(palavra: string): string {
@@ -10,9 +10,18 @@ function normalizar(palavra: string): string {
   return p;
 }
 
-function calcularScore(atendente: Atendente, analise: AnaliseTranscricao): { score: number; tracosBatidos: string[] } {
+// sinal de negocio pede um foco especifico do atendente (retencao pra churn, cross-sell pra upsell)
+function focoEsperado(analise: AnaliseTranscricao): Foco | null {
+  if (analise.sinalNegocio === "ALERTA_CHURN") return "retencao";
+  if (analise.sinalNegocio === "OPORTUNIDADE_UPSELL") return "cross-sell";
+  return null;
+}
+
+function calcularScore(
+  atendente: Atendente,
+  analise: AnaliseTranscricao
+): { score: number; tracosBatidos: string[]; focoBate: boolean; segmentoBate: boolean } {
   const tracosRecomendados = analise.tracosRecomendados.map(normalizar);
-  const tracosAtendente = atendente.tracos.map(normalizar);
 
   const tracosBatidos = atendente.tracos.filter((t) => tracosRecomendados.includes(normalizar(t)));
   const percentualTracos = tracosRecomendados.length > 0 ? tracosBatidos.length / tracosRecomendados.length : 0;
@@ -21,18 +30,32 @@ function calcularScore(atendente: Atendente, analise: AnaliseTranscricao): { sco
     (s) => normalizar(s) === normalizar(analise.segmentoDetectado)
   );
 
-  const scoreTracos = percentualTracos * 60;
-  const scoreSegmento = segmentoBate ? 25 : 0;
-  const scoreNota = (atendente.notaMedia / 10) * 15;
+  const focoAlvo = focoEsperado(analise);
+  const focoBate = focoAlvo !== null && atendente.foco.includes(focoAlvo);
 
-  const score = Math.round(scoreTracos + scoreSegmento + scoreNota);
+  const scoreTracos = percentualTracos * 50;
+  const scoreSegmento = segmentoBate ? 20 : 0;
+  const scoreNota = (atendente.notaMedia / 10) * 10;
+  const scoreFoco = focoBate ? 20 : 0;
 
-  return { score: Math.min(score, 100), tracosBatidos };
+  const score = Math.round(scoreTracos + scoreSegmento + scoreNota + scoreFoco);
+
+  return { score: Math.min(score, 100), tracosBatidos, focoBate, segmentoBate };
 }
 
-function gerarMotivo(atendente: Atendente, tracosBatidos: string[], segmentoBate: boolean): string {
+function gerarMotivo(
+  atendente: Atendente,
+  tracosBatidos: string[],
+  segmentoBate: boolean,
+  focoBate: boolean,
+  analise: AnaliseTranscricao
+): string {
   const partes: string[] = [];
 
+  if (focoBate) {
+    const rotulo = analise.sinalNegocio === "ALERTA_CHURN" ? "especialista em retencao de clientes" : "especialista em cross-sell";
+    partes.push(rotulo);
+  }
   if (tracosBatidos.length > 0) {
     partes.push(`perfil ${tracosBatidos.join(", ")}`);
   }
@@ -46,15 +69,12 @@ function gerarMotivo(atendente: Atendente, tracosBatidos: string[], segmentoBate
 
 export function calcularMatches(analise: AnaliseTranscricao, limite = 3): MatchAtendente[] {
   const calculados = atendentes.map((atendente) => {
-    const { score, tracosBatidos } = calcularScore(atendente, analise);
-    const segmentoBate = atendente.segmentos.some(
-      (s) => normalizar(s) === normalizar(analise.segmentoDetectado)
-    );
+    const { score, tracosBatidos, focoBate, segmentoBate } = calcularScore(atendente, analise);
 
     return {
       atendente,
       score,
-      motivo: gerarMotivo(atendente, tracosBatidos, segmentoBate),
+      motivo: gerarMotivo(atendente, tracosBatidos, segmentoBate, focoBate, analise),
     };
   });
 
