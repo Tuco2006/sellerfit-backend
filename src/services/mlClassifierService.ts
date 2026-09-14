@@ -54,7 +54,7 @@ function carregarModelo(): ModeloExportado {
   return modelo as ModeloExportado;
 }
 
-// mesma limpeza estrutural feita no notebook (remove marcacao de locutor e anonimizacao)
+// mesma limpeza estrutural feita no notebook (remove marcação de locutor e anonimização)
 function limparTranscricao(texto: string): string {
   let t = texto.toLowerCase();
   t = t.replace(/\[locutor\s+\d+\]:?/gi, " ");
@@ -95,8 +95,8 @@ function vetorizarTfidf(tokens: string[], m: ModeloExportado): number[] {
   return vetor;
 }
 
-// pega as palavras do proprio texto que mais pesaram pra classe prevista,
-// usando os coeficientes reais do modelo (nao e um texto generico fixo)
+// pega as palavras do próprio texto que mais pesaram pra classe prevista,
+// usando os coeficientes reais do modelo (não é um texto genérico fixo)
 function termosInfluentes(vetor: number[], m: ModeloExportado, indiceClasse: number, limite = 5): string[] {
   const linhaCoef = m.coef[indiceClasse];
   const contribuicoes: { termo: string; peso: number }[] = [];
@@ -125,15 +125,15 @@ function montarExplicacao(sinal: SinalNegocio, termos: string[], confianca: numb
   if (sinal === "ALERTA_CHURN") {
     const motivo =
       termos.length > 0
-        ? `O modelo classificou essa conversa como risco de Churn com ${confiancaPct}% de confianca. As palavras "${termos.join('", "')}" foram as que mais pesaram nessa decisao, dentro do vocabulario que o modelo aprendeu nas reunioes reais do desafio.`
-        : `O modelo classificou essa conversa como risco de Churn com ${confiancaPct}% de confianca, mas nao achou uma palavra isolada dominante — o sinal veio da combinacao de varios termos mais fracos do texto.`;
+        ? `O modelo classificou essa conversa como risco de Churn com ${confiancaPct}% de confiança. As palavras "${termos.join('", "')}" foram as que mais pesaram nessa decisão, dentro do vocabulário que o modelo aprendeu nas reuniões reais do desafio.`
+        : `O modelo classificou essa conversa como risco de Churn com ${confiancaPct}% de confiança, mas não achou uma palavra isolada dominante — o sinal veio da combinação de vários termos mais fracos do texto.`;
 
     return {
       motivo,
       janelasDeOportunidade: [
-        "Contato imediato do time de Retencao, antes que o cliente formalize o cancelamento.",
-        "Oferecer uma revisao de contrato, desconto ou plano alternativo pra reverter a insatisfacao.",
-        "Levantar o historico de chamados desse cliente pra atacar a causa raiz do problema, nao so o sintoma.",
+        "Contato imediato do time de Retenção, antes que o cliente formalize o cancelamento.",
+        "Oferecer uma revisão de contrato, desconto ou plano alternativo pra reverter a insatisfação.",
+        "Levantar o histórico de chamados desse cliente pra atacar a causa raiz do problema, não só o sintoma.",
       ],
     };
   }
@@ -141,24 +141,24 @@ function montarExplicacao(sinal: SinalNegocio, termos: string[], confianca: numb
   if (sinal === "OPORTUNIDADE_UPSELL") {
     const motivo =
       termos.length > 0
-        ? `O modelo classificou essa conversa como Oportunidade de Upsell com ${confiancaPct}% de confianca. As palavras "${termos.join('", "')}" foram as que mais pesaram nessa decisao, dentro do vocabulario que o modelo aprendeu nas reunioes reais do desafio.`
-        : `O modelo classificou essa conversa como Oportunidade de Upsell com ${confiancaPct}% de confianca, mas nao achou uma palavra isolada dominante — o sinal veio da combinacao de varios termos mais fracos do texto.`;
+        ? `O modelo classificou essa conversa como Oportunidade de Upsell com ${confiancaPct}% de confiança. As palavras "${termos.join('", "')}" foram as que mais pesaram nessa decisão, dentro do vocabulário que o modelo aprendeu nas reuniões reais do desafio.`
+        : `O modelo classificou essa conversa como Oportunidade de Upsell com ${confiancaPct}% de confiança, mas não achou uma palavra isolada dominante — o sinal veio da combinação de vários termos mais fracos do texto.`;
 
     return {
       motivo,
       janelasDeOportunidade: [
-        "Levar uma proposta de upgrade ou modulo adicional enquanto o interesse do cliente esta quente.",
-        "Agendar uma demonstracao focada exatamente no que o cliente mencionou querer expandir.",
+        "Levar uma proposta de upgrade ou módulo adicional enquanto o interesse do cliente está quente.",
+        "Agendar uma demonstração focada exatamente no que o cliente mencionou querer expandir.",
         "Encaminhar pro time de Cross-sell com prioridade, antes que o interesse esfrie.",
       ],
     };
   }
 
   return {
-    motivo: `O modelo nao encontrou um padrao forte o suficiente de risco ou de interesse comercial nesse texto (confianca de ${confiancaPct}% pra Neutro). Isso nao significa que nao ha nada acontecendo — so que o vocabulario da conversa nao bateu com os padroes de Churn/Upsell aprendidos no treinamento.`,
+    motivo: `O modelo não encontrou um padrão forte o suficiente de risco ou de interesse comercial nesse texto (confiança de ${confiancaPct}% pra Neutro). Isso não significa que não há nada acontecendo — só que o vocabulário da conversa não bateu com os padrões de Churn/Upsell aprendidos no treinamento.`,
     janelasDeOportunidade: [
       "Aproveitar a conversa neutra pra fortalecer o relacionamento e mapear necessidades futuras.",
-      "Investigar ativamente se ha dores que o cliente nao verbalizou diretamente (a IA generativa ajuda nisso).",
+      "Investigar ativamente se há dores que o cliente não verbalizou diretamente (a IA generativa ajuda nisso).",
       "Agendar um follow-up de rotina pra manter o relacionamento aquecido.",
     ],
   };
@@ -204,9 +204,9 @@ function preverComRegressaoLogistica(vetor: number[], m: ModeloExportado): Class
   };
 }
 
-// classificacao via modelo classico de Machine Learning (TF-IDF + Regressao Logistica),
+// classificação via modelo clássico de Machine Learning (TF-IDF + Regressão Logística),
 // treinado nos dados reais do desafio de Data Science da equipe. Roda em paralelo
-// com a analise por IA generativa (OpenAI) - sao duas abordagens diferentes pro mesmo problema.
+// com a análise por IA generativa (OpenAI) - são duas abordagens diferentes pro mesmo problema.
 export function classificarComML(transcricao: string): ClassificacaoML {
   const m = carregarModelo();
   const textoLimpo = limparTranscricao(transcricao);

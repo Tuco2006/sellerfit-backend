@@ -13,7 +13,7 @@ const entradaSchema = z.object({
   clienteNome: z.string().min(1, "informe o nome do cliente"),
   empresa: z.string().min(1, "informe a empresa"),
   segmento: z.string().min(1, "informe o segmento"),
-  transcricao: z.string().min(20, "a transcricao precisa ter pelo menos 20 caracteres"),
+  transcricao: z.string().min(20, "a transcrição precisa ter pelo menos 20 caracteres"),
   notaNps: z.number().min(0).max(10).optional(),
 });
 
@@ -21,7 +21,7 @@ analiseRouter.post("/", async (req, res) => {
   const validacao = entradaSchema.safeParse(req.body);
 
   if (!validacao.success) {
-    return res.status(400).json({ erro: "dados invalidos", detalhes: validacao.error.flatten() });
+    return res.status(400).json({ erro: "dados inválidos", detalhes: validacao.error.flatten() });
   }
 
   try {
@@ -36,11 +36,11 @@ analiseRouter.post("/", async (req, res) => {
     const matches = calcularMatches(analise);
 
     const classificacaoML = classificarComML(entrada.transcricao);
-    // recalcula o match usando o sinal previsto pelo modelo de ML no lugar da regra de negocio,
-    // pra essa segunda forma de analise ter sua propria recomendacao de atendente
+    // recalcula o match usando o sinal previsto pelo modelo de ML no lugar da regra de negócio,
+    // pra essa segunda forma de análise ter sua própria recomendação de atendente
     const matchesML = calcularMatches({ ...analise, sinalNegocio: classificacaoML.sinal });
 
-    // quando a OpenAI analisou de verdade o catalogo de atendentes e escolheu um, monta a recomendacao
+    // quando a OpenAI analisou de verdade o catálogo de atendentes e escolheu um, monta a recomendação
     let recomendacaoIA: RecomendacaoIA | undefined;
     if (analiseTexto.atendenteRecomendadoId) {
       const atendenteEscolhido = atendentes.find((a) => a.id === analiseTexto.atendenteRecomendadoId);
@@ -55,6 +55,6 @@ analiseRouter.post("/", async (req, res) => {
     res.json({ analise, matches, classificacaoML, matchesML, recomendacaoIA });
   } catch (erro) {
     console.error(erro);
-    res.status(500).json({ erro: "falha ao processar a analise" });
+    res.status(500).json({ erro: "falha ao processar a análise" });
   }
 });

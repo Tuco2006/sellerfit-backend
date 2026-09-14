@@ -1,7 +1,7 @@
-export type Urgencia = "BAIXA" | "MEDIA" | "ALTA";
+export type Urgencia = "BAIXA" | "MÉDIA" | "ALTA";
 export type SinalNegocio = "ALERTA_CHURN" | "OPORTUNIDADE_UPSELL" | "NEUTRO";
 export type ZonaNps = "Promotor" | "Passivo" | "Detrator" | "Sem nota";
-export type Foco = "retencao" | "cross-sell";
+export type Foco = "retenção" | "cross-sell";
 
 export interface Atendente {
   id: string;
@@ -16,7 +16,7 @@ export interface Atendente {
   anosExperiencia: number;
   notaMedia: number;
   casesResolvidos: number;
-  disponibilidade: "Disponivel" | "Em atendimento" | "Ausente";
+  disponibilidade: "Disponível" | "Em atendimento" | "Ausente";
 }
 
 export interface AnaliseTexto {

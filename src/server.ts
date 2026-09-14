@@ -21,7 +21,7 @@ app.use("/api/atendentes", atendentesRouter);
 app.use("/api/analises", analiseRouter);
 
 app.use((_req, res) => {
-  res.status(404).json({ erro: "rota nao encontrada" });
+  res.status(404).json({ erro: "rota não encontrada" });
 });
 
 app.listen(env.port, () => {

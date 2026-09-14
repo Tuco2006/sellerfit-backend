@@ -1,7 +1,7 @@
 import { atendentes } from "../data/atendentes";
 import { AnaliseTranscricao, Atendente, Foco, MatchAtendente } from "../types";
 
-// normaliza pra ignorar diferenca de genero tipo "direto" / "direta"
+// normaliza pra ignorar diferença de gênero tipo "direto" / "direta"
 function normalizar(palavra: string): string {
   const p = palavra.trim().toLowerCase();
   if (p.length > 4 && (p.endsWith("a") || p.endsWith("o"))) {
@@ -10,9 +10,9 @@ function normalizar(palavra: string): string {
   return p;
 }
 
-// sinal de negocio pede um foco especifico do atendente (retencao pra churn, cross-sell pra upsell)
+// sinal de negócio pede um foco específico do atendente (retenção pra churn, cross-sell pra upsell)
 function focoEsperado(analise: AnaliseTranscricao): Foco | null {
-  if (analise.sinalNegocio === "ALERTA_CHURN") return "retencao";
+  if (analise.sinalNegocio === "ALERTA_CHURN") return "retenção";
   if (analise.sinalNegocio === "OPORTUNIDADE_UPSELL") return "cross-sell";
   return null;
 }
@@ -53,16 +53,16 @@ function gerarMotivo(
   const partes: string[] = [];
 
   if (focoBate) {
-    const rotulo = analise.sinalNegocio === "ALERTA_CHURN" ? "especialista em retencao de clientes" : "especialista em cross-sell";
+    const rotulo = analise.sinalNegocio === "ALERTA_CHURN" ? "especialista em retenção de clientes" : "especialista em cross-sell";
     partes.push(rotulo);
   }
   if (tracosBatidos.length > 0) {
     partes.push(`perfil ${tracosBatidos.join(", ")}`);
   }
   if (segmentoBate) {
-    partes.push(`experiencia no segmento do cliente`);
+    partes.push(`experiência no segmento do cliente`);
   }
-  partes.push(`nota media ${atendente.notaMedia.toFixed(1)} em ${atendente.casesResolvidos} atendimentos`);
+  partes.push(`nota média ${atendente.notaMedia.toFixed(1)} em ${atendente.casesResolvidos} atendimentos`);
 
   return `Indicado por ${partes.join(" + ")}.`;
 }

@@ -1,4 +1,4 @@
-// dicionario baseado no desafio de data science da equipe (challenge TOTVS 2026)
+// dicionário baseado no desafio de data science da equipe (challenge TOTVS 2026)
 export const entidadesEcossistema: Record<string, string[]> = {
   totvs_rm: ["rm"],
   totvs_fiscal: ["fiscal"],

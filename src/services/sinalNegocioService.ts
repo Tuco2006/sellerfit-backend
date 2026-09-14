@@ -40,7 +40,7 @@ export interface ResultadoSinalNegocio {
   mencoesConcorrentes: string[];
 }
 
-// mesma regra de negocio usada pra rotular o dataset no notebook do desafio de data science:
+// mesma regra de negócio usada pra rotular o dataset no notebook do desafio de data science:
 // Detrator + (concorrente ou problema) = risco de churn / Promotor + oportunidade = upsell
 export function calcularSinalNegocio(transcricao: string, notaNps?: number): ResultadoSinalNegocio {
   const texto = transcricao.toLowerCase();
@@ -57,7 +57,7 @@ export function calcularSinalNegocio(transcricao: string, notaNps?: number): Res
   if (mencionaConcorrente && possuiProblema) {
     return {
       sinalNegocio: "ALERTA_CHURN",
-      justificativaSinal: `Cliente mencionou concorrente (${mencoesConcorrentes.join(", ")}) junto com sinais de insatisfacao no texto.`,
+      justificativaSinal: `Cliente mencionou concorrente (${mencoesConcorrentes.join(", ")}) junto com sinais de insatisfação no texto.`,
       zonaNps,
       mencoesTotvs,
       mencoesConcorrentes,
@@ -68,7 +68,7 @@ export function calcularSinalNegocio(transcricao: string, notaNps?: number): Res
     return {
       sinalNegocio: "ALERTA_CHURN",
       justificativaSinal: `NPS na zona Detrator combinado com ${
-        mencionaConcorrente ? "mencao a concorrente" : "sinais de problema no texto"
+        mencionaConcorrente ? "menção a concorrente" : "sinais de problema no texto"
       }.`,
       zonaNps,
       mencoesTotvs,
@@ -108,7 +108,7 @@ export function calcularSinalNegocio(transcricao: string, notaNps?: number): Res
 
   return {
     sinalNegocio: "NEUTRO",
-    justificativaSinal: "Nao foram identificados sinais suficientes de risco de churn ou oportunidade de upsell.",
+    justificativaSinal: "Não foram identificados sinais suficientes de risco de churn ou oportunidade de upsell.",
     zonaNps,
     mencoesTotvs,
     mencoesConcorrentes,
